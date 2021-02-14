@@ -8,7 +8,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace ContosoOnlineOrders.Api.Controllers
 {
-    [Route("[controller]")]
     [ApiController]
     [ApiVersion("1.0")]
     [ApiVersion("1.1")]
@@ -30,27 +29,22 @@ namespace ContosoOnlineOrders.Api.Controllers
 #else
         [HttpGet("/orders")]
 #endif
-        public async Task<ActionResult<IEnumerable<Order>>> GetOrders()
-        {
-            return await Task.FromResult(Ok(StoreServices.GetOrders()));
-        }
+        public IEnumerable<Order> GetOrders() =>
+            StoreServices.GetOrders();
 
 #if OperationId
         [HttpGet("/orders/{id}", Name = nameof(GetOrder))]
 #else
         [HttpGet("/orders/{id}")]
 #endif
-        public async Task <ActionResult<Order>> GetOrder([FromRoute] Guid id)
+        public ActionResult<Order> GetOrder(Guid id)
         {
             var order = StoreServices.GetOrder(id);
-            ActionResult<Order> result = NotFound();
 
-            if(order != null)
-            {
-                result = Ok(order);
-            }
+            if (order is null)
+                return NotFound();
 
-            return await Task.FromResult(result);
+            return order;
         }
 
 #if OperationId
@@ -58,24 +52,19 @@ namespace ContosoOnlineOrders.Api.Controllers
 #else
         [HttpGet("/orders/{id}/checkInventory")]
 #endif
-        public async Task<ActionResult> CheckInventory([FromRoute] Guid id)
+        public IActionResult CheckInventory(Guid id)
         {
-            ActionResult result = NotFound();
-
             try
             {
-                var inventory = StoreServices.CheckOrderInventory(id);
-                if (inventory)
-                {
-                    result = Ok();
-                }
+                if (!StoreServices.CheckOrderInventory(id))
+                    return NotFound();
+
+                return Ok();
             }
             catch
             {
-                result = Conflict();
+                return Conflict();
             }
-
-            return await Task.FromResult(result);
         }
 
 #if OperationId
@@ -83,17 +72,12 @@ namespace ContosoOnlineOrders.Api.Controllers
 #else
         [HttpGet("/orders/{id}/ship")]
 #endif
-        public async Task<ActionResult> ShipOrder([FromRoute] Guid id)
+        public IActionResult ShipOrder(Guid id)
         {
-            var shipResult = StoreServices.ShipOrder(id);
-            ActionResult result = NotFound();
+            if (!StoreServices.ShipOrder(id))
+                return NotFound();
 
-            if(shipResult)
-            {
-                result = Ok();
-            }
-
-            return await Task.FromResult(result);
+            return Ok();
         }
 
 #if OperationId
@@ -101,22 +85,17 @@ namespace ContosoOnlineOrders.Api.Controllers
 #else
         [HttpPut("/products/{id}/checkInventory")]
 #endif
-        public async Task<ActionResult> UpdateProductInventory([FromRoute] int id, 
-            [FromBody] InventoryUpdateRequest request)
+        public IActionResult UpdateProductInventory(int id, InventoryUpdateRequest request)
         {
-            ActionResult result = NotFound();
-
             try
             {
                 StoreServices.UpdateProductInventory(id, request.countToAdd);
-                result = Ok();
+                return Ok();
             }
             catch
             {
-                result = NotFound();
+                return NotFound();
             }
-
-            return await Task.FromResult(result);
         }
 
 #if OperationId
@@ -124,23 +103,18 @@ namespace ContosoOnlineOrders.Api.Controllers
 #else
         [HttpPost("/products")]
 #endif
-        public async Task<ActionResult<Product>> CreateProduct(
-            [FromBody] CreateProductRequest request)
+        public IActionResult CreateProduct(CreateProductRequest request)
         {
-            ActionResult<Product> result = NotFound();
-
             try
             {
                 var newProduct = new Product(request.Id, request.Name, request.InventoryCount);
                 StoreServices.CreateProduct(newProduct);
-                result = Created($"/products/{request.Id}", newProduct);
+                return Created($"/products/{request.Id}", newProduct);
             }
             catch
             {
-                result = Conflict();
+                return Conflict();
             }
-
-            return await Task.FromResult(result);
         }
     }
 }
